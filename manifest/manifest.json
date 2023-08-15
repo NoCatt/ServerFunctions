@@ -1,10 +1,10 @@
 {
-	"name": "name",
-	"displayname": "displayname",
+	"name": "Neinguar.ServerFunctions",
+	"displayname": "ServerFunctions",
 	"dependencyName": "dependencyName",
-	"description": "description",
+	"description": "funny functions for my serber",
 	"api_version": "3",
 	"version": "1.0",
 	"run_on_server": true,
-	"run_on_client": true
+	"run_on_client": false
 }
