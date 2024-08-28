@@ -1,12 +1,12 @@
-use rrplug::engine_functions;
+use rrplug::bindings::class_types::cplayer::CPlayer;
+use rrplug::offset_functions;
 use rrplug::prelude::*;
-use rrplug::bindings::entity::CBasePlayer;
-use rrplug::bindings::entity::CBaseClient;
+use rrplug::bindings::class_types::client::CClient; 
 use core::ffi::c_char;
 
-engine_functions! {
+offset_functions! {
     ENGINE_FUNCTIONS + EngineFunctions for WhichDll::Engine => {
-        client_array = *mut CBaseClient, at 0x12A53F90;
+        client_array = *mut CClient where offset(0x12A53F90);
     }
 }
 
@@ -14,16 +14,19 @@ engine_functions! {
 pub struct TemplatePlugin;
 
 impl Plugin for TemplatePlugin {
-    fn new(_plugin_data: &PluginData) -> Self {
+    const PLUGIN_INFO: PluginInfo = PluginInfo::new(
+        c"Neinguars small tag plugin",          // name
+        c"NeinTagPl", // used for the label in the log should be 9 chars long to be consitent
+        c"NeinguarTag",  // dependency string that mods can use
+        PluginContext::all(), // context -> if it has only client it will not load on dedicated servers
+    );
+    fn new(_reloaded: bool) -> Self {
         log::info!("yay logging :D");
-        _plugin_data.register_sq_functions(set_player_tag);
+
+        register_sq_functions(set_player_tag);
+
         Self {}
     }
-
-    fn on_dll_load(&self, _engine: &PluginLoadDLL, _dll_ptr: &DLLPointer) {
-        unsafe { EngineFunctions::try_init(_dll_ptr, &ENGINE_FUNCTIONS) };
-    }
-    fn main(&self) {}
 
     // omg some more functions in the trait
 }
@@ -36,11 +39,11 @@ pub(crate) unsafe fn set_c_char_array<const U: usize>(buf: &mut [c_char; U], new
         .for_each(|(buf_char, new)| *buf_char = *new as i8);
 }
 
-#[rrplug::sqfunction(VM = "Server", ExportName = "SetPlayerTag")]
-fn set_player_tag(player: &mut CBasePlayer, tag: String) {
+#[rrplug::sqfunction(VM = "SERVER", ExportName = "SetPlayerTag")]
+fn set_player_tag(player: Option<&mut CPlayer>, tag: String)-> Result<(),String> {
 
     // shamelessly stolen from Catornot
-    
+    let player = player.ok_or_else(||"passed a non player entity".to_string())?;
     let client = unsafe{ ENGINE_FUNCTIONS.wait().client_array.add((**player.player_index - 1).try_into().unwrap()).as_mut().ok_or("Couldnt find player".to_string()) ?};
 
     unsafe {
